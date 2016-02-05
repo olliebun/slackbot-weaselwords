@@ -35,7 +35,9 @@ The bot is configured at runtime with environment variables. It looks for these 
 
 WORDS_FILE and USERS_FILE must both point at existing files (relative to the working directory). These files must each have a word match or user per line.
 
-The users must be the slack user ID, not the username. This will be fixed soon.
+Each line in WORDS_FILE is just a string to search for.
+
+Each line in USERS_FILE is a username.
 
 SLACK_TOKEN must be a valid API token for a bot user in your team.
 

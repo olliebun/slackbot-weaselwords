@@ -38,6 +38,7 @@ type Slack interface {
 	SendDirectMessage(DirectMessage) error
 
 	GetChannelName(channel_id string) (string, error)
+	GetUserName(user_id string) (string, error)
 }
 
 type slack struct {
@@ -50,9 +51,13 @@ type slack struct {
 
 	// Map of channel ID to channel name
 	channels map[string]string
+
+	// Map of user ID to user name
+	users map[string]string
 }
 
-func (s *slack) slack_get(endpoint string, params map[string]string, res interface{}) error {
+func (s *slack) slack_get(endpoint string, params map[string]string) (map[string]interface{}, error) {
+	var res map[string]interface{}
 	url := fmt.Sprintf("%s/api/%s?token=%s", SLACK_API, endpoint, s.slack_token)
 
 	for k, v := range params {
@@ -63,38 +68,38 @@ func (s *slack) slack_get(endpoint string, params map[string]string, res interfa
 	resp, err := http.Get(url)
 
 	if err != nil {
-		return errSlackSetupFailed{err.Error()}
+		return nil, errSlackSetupFailed{err.Error()}
 	}
 
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		return errSlackSetupFailed{fmt.Sprintf("Response status code from slack API was %d", resp.StatusCode)}
+		return nil, errSlackSetupFailed{fmt.Sprintf("Response status code from slack API was %d", resp.StatusCode)}
 	}
 
 	dec := json.NewDecoder(resp.Body)
 
 	if err := dec.Decode(&res); err != nil {
-		return errSlackSetupFailed{fmt.Sprintf("Failed to decode response from slack API: %s", err)}
+		return nil, errSlackSetupFailed{fmt.Sprintf("Failed to decode response from slack API: %s", err)}
 	}
 
 	fmt.Printf("Response from slack API: %#v\n", res)
 
-	return nil
+	if status, ok := res["ok"]; ok && status.(bool) == false {
+		return nil, errSlackSetupFailed{fmt.Sprintf(`Got response with "ok": false from %s`, endpoint)}
+
+	}
+
+	return res, nil
 }
 
 // Open an IM channel with this user. Returns the channel ID.
 func (s *slack) im_open(user_id string) (string, error) {
-
-	var res map[string]interface{}
-
-	err := s.slack_get("im.open", map[string]string{"user": user_id}, &res)
+	res, err := s.slack_get("im.open", map[string]string{"user": user_id})
 	fmt.Printf("Response from slack: %#v\n", res)
 
 	if err != nil {
 		return "", err
-	} else if !res["ok"].(bool) {
-		return "", errSlackSetupFailed{fmt.Sprintf("Failed to open IM with user %s", user_id)}
 	}
 
 	channel_id := res["channel"].(map[string]interface{})["id"].(string)
@@ -102,11 +107,23 @@ func (s *slack) im_open(user_id string) (string, error) {
 	return channel_id, nil
 }
 
-func (s *slack) channel_list() error {
+func (s *slack) update_channel_list() error {
+	res, err := s.slack_get("channels.list", nil)
 
-	var res map[string]interface{}
+	if err != nil {
+		return err
+	}
 
-	err := s.slack_get("channels.list", nil, &res)
+	for _, c := range res["channels"].([]interface{}) {
+		cmap := c.(map[string]interface{})
+		s.channels[cmap["id"].(string)] = cmap["name"].(string)
+	}
+
+	return nil
+}
+
+func (s *slack) update_user_list() error {
+	res, err := s.slack_get("users.list", nil)
 
 	if err != nil {
 		return err
@@ -114,9 +131,9 @@ func (s *slack) channel_list() error {
 		return errSlackSetupFailed{"Failed to get channel list"}
 	}
 
-	for _, c := range res["channels"].([]interface{}) {
+	for _, c := range res["members"].([]interface{}) {
 		cmap := c.(map[string]interface{})
-		s.channels[cmap["id"].(string)] = cmap["name"].(string)
+		s.users[cmap["id"].(string)] = cmap["name"].(string)
 	}
 
 	return nil
@@ -171,7 +188,7 @@ func New(slack_token string) (Slack, error) {
 		return nil, err
 	}
 
-	s := &slack{conn, slack_token, make(map[string]string), make(map[string]string)}
+	s := &slack{conn, slack_token, make(map[string]string), make(map[string]string), make(map[string]string)}
 
 	return s, nil
 }
@@ -213,7 +230,7 @@ func (s *slack) GetChannelName(channel_id string) (string, error) {
 		return channel_name, nil
 	}
 
-	err := s.channel_list()
+	err := s.update_channel_list()
 	if err != nil {
 		return "", err
 	}
@@ -223,4 +240,22 @@ func (s *slack) GetChannelName(channel_id string) (string, error) {
 		return "", fmt.Errorf("Channel name not found")
 	}
 	return channel_name, nil
+}
+
+func (s *slack) GetUserName(user_id string) (string, error) {
+	user_name, ok := s.users[user_id]
+	if ok {
+		return user_name, nil
+	}
+
+	err := s.update_user_list()
+	if err != nil {
+		return "", err
+	}
+
+	user_name, ok = s.users[user_id]
+	if !ok {
+		return "", fmt.Errorf("User name not found")
+	}
+	return user_name, nil
 }

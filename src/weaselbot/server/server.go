@@ -86,14 +86,9 @@ func (s *server) handle_message(msg map[string]interface{}) {
 	text := msg["text"].(string)
 	channel := msg["channel"].(string)
 
-	if !s.users.Matches(user) {
-		fmt.Printf("ignoring message for user %q\n", user)
-		return
-	}
-
-	found := s.words.Matches(text)
-	if len(found) == 0 {
-		fmt.Printf("no word matches in message in chan %q for user %q, skipping\n", channel, user)
+	user_name, err := s.slack.GetUserName(user)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Could not get user name for user %q: %s", user, err)
 		return
 	}
 
@@ -103,7 +98,18 @@ func (s *server) handle_message(msg map[string]interface{}) {
 		return
 	}
 
-	restext := fmt.Sprintf("You used some weasel words in a message to #%s:\n```%v\n```", channel_name, strings.Join(found, "\n"))
+	if !s.users.Matches(user_name) {
+		fmt.Printf("ignoring message for user %q\n", user_name)
+		return
+	}
+
+	found := s.words.Matches(text)
+	if len(found) == 0 {
+		fmt.Printf("no word matches in message in chan %q for user %q, skipping\n", channel, user_name)
+		return
+	}
+
+	restext := fmt.Sprintf("Hey %s, you used some weasel words in a message to #%s:\n```%v\n```", user_name, channel_name, strings.Join(found, "\n"))
 
 	err = s.slack.SendDirectMessage(slack.DirectMessage{User_Name: user, Text: restext})
 	if err != nil {

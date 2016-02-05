@@ -3,7 +3,6 @@ package server
 import (
 	"fmt"
 	"os"
-	"strings"
 
 	"weaselbot"
 	"weaselbot/config"
@@ -109,9 +108,13 @@ func (s *server) handle_message(msg map[string]interface{}) {
 		return
 	}
 
-	restext := fmt.Sprintf("Hey %s, you used some weasel words in a message to #%s:\n```%v\n```", user_name, channel_name, strings.Join(found, "\n"))
+	n := weaselbot.Notification{
+		User_Name: user_name,
+		Channel:   channel_name,
+		Words:     found,
+	}
 
-	err = s.slack.SendDirectMessage(slack.DirectMessage{User_Name: user, Text: restext})
+	err = s.slack.SendDirectMessage(slack.DirectMessage{User_Name: user, Text: n.String()})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to send slack DM: %s\n", err)
 	}

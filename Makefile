@@ -9,3 +9,6 @@ gofmt:
 
 build: lint
 	$(GB) build all
+
+test: lint
+	$(GB) test all

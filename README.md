@@ -33,6 +33,11 @@ The bot is configured at runtime with environment variables. It looks for these 
 * `USERS_FILE`
 * `SLACK_TOKEN`
 
+`SERVER_ADDR` is just passed to Go's `http.ListenAndServe` function. It should be of the form $HOST:$PORT. Examples:
+
+* `:8080`
+* `192.168.0.1:9090`
+
 WORDS_FILE and USERS_FILE must both point at existing files (relative to the working directory). These files must each have a word match or user per line.
 
 Each line in WORDS_FILE is just a string to search for.

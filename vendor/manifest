@@ -1,0 +1,18 @@
+{
+	"version": 0,
+	"dependencies": [
+		{
+			"importpath": "github.com/ceralena/envconf",
+			"repository": "https://github.com/ceralena/envconf",
+			"revision": "7e9f876a9e722fe873998675dc575ea35f0b65d6",
+			"branch": "master"
+		},
+		{
+			"importpath": "golang.org/x/net/websocket",
+			"repository": "https://go.googlesource.com/net",
+			"revision": "6ccd6698c634f5d835c40c1c31848729e0cecda1",
+			"branch": "master",
+			"path": "/websocket"
+		}
+	]
+}

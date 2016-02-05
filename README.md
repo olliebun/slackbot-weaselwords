@@ -2,6 +2,18 @@
 
 A Slack bot for warning users about weasel words in their Slack messaging.
 
+For example, if you post a message like this:
+
+	Sorry, I just wanted to see if it would be okay if I could just work from home for a little while next week one day in the morning? Let me know.
+
+The bot will DM you like this:
+
+![DM screenshot](http://i.imgur.com/47Fx6Hh.png)
+
+In no time you'll be sending these bad boys:
+
+	WFH today. Have slack and phone.
+
 Inspired by [the chrome extension](http://www.slate.com/blogs/xx_factor/2015/12/29/new_chrome_app_helps_women_stop_saying_just_and_sorry_in_emails.html) to help stop women from saying "just" and "sorry" in emails.
 
 ## Building

@@ -94,7 +94,7 @@ func (s *slack) slack_get(endpoint string, params map[string]string) (map[string
 }
 
 // Open an IM channel with this user. Returns the channel ID.
-func (s *slack) im_open(user_id string) (string, error) {
+func (s *slack) update_user_channel_list(user_id string) (string, error) {
 	res, err := s.slack_get("im.open", map[string]string{"user": user_id})
 	fmt.Printf("Response from slack: %#v\n", res)
 
@@ -198,20 +198,13 @@ func (s *slack) GetMessage(into interface{}) error {
 	return err
 }
 
-func (s *slack) SendDirectMessage(msg DirectMessage) (err error) {
-	// Get the channel id
-	channel_id, ok := s.imChannels[msg.User_Name]
-	if !ok {
-		fmt.Printf("No channel ID found for user %s: looking one up\n", msg.User_Name)
-		channel_id, err = s.im_open(msg.User_Name)
-		if err != nil {
-			return err
-		}
-
+func (s *slack) SendDirectMessage(msg DirectMessage) error {
+	// Get the channel id for direct messaging this user
+	channel_id, err := s.GetDirectMessageChannelID(msg.User_Name)
+	if err != nil {
+		return err
 	}
-
 	slackmsg := slackDirectMessage{Id: 1, Type: "message", Channel: channel_id, Text: msg.Text}
-	// slackmsg := slackDirectMessage{Id: 1, Type: "message", Channel: "#general", Text: msg.Text}
 
 	fmt.Printf("Sending message to slack: %#v\n", slackmsg)
 	err = websocket.JSON.Send(s.conn, slackmsg)
@@ -219,9 +212,16 @@ func (s *slack) SendDirectMessage(msg DirectMessage) (err error) {
 		return err
 	}
 
-	// TODO(cera) - Read the response from Slack here
-
 	return nil
+}
+
+func (s *slack) GetDirectMessageChannelID(user_id string) (string, error) {
+	channel_id, ok := s.imChannels[user_id]
+	if ok {
+		return channel_id, nil
+	}
+	fmt.Printf("No channel ID found for user %s: looking one up\n", user_id)
+	return s.update_user_channel_list(user_id)
 }
 
 func (s *slack) GetChannelName(channel_id string) (string, error) {
